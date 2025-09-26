@@ -49,7 +49,6 @@ public abstract class Character : MonoBehaviour
         hp = maxHP;
         UpdateHPFill();
         characterMove = GetComponent<CharacterMove>();
-        if (gameManager != null) characterMove.gameManager = gameManager;
         animator = GetComponent<Animator>();
         characterPos = GetComponent<CharacterPos>();
         characterAttack = GetComponent<CharacterAttack>();

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 
@@ -13,12 +14,19 @@ public abstract class CharacterMove : MonoBehaviour
     protected Transform target;
     protected Vector3 newPos;
     protected float minDis;
+    protected FindPathManager findPathManager;
+    protected Collider2D collider;
+    protected List<Vector3> pathToPos;
+    protected int currentIndex;
     protected virtual void Start()
     {
         animator = GetComponent<Animator>();
         character = GetComponent<Character>();
         isMove = true;
         StopMove();
+        if(character.gameManager != null) gameManager = character.gameManager;
+        collider = GetComponent<Collider2D>();
+        findPathManager = new FindPathManager(collider.bounds.size.x, collider.bounds.size.y, gameManager.cam, "Building");
     }
     protected virtual void Update() 
     {
@@ -27,27 +35,41 @@ public abstract class CharacterMove : MonoBehaviour
             StopMove();
             return;
         }
-        if (status == Status.Moving) GoToPos(newPos);
-        else if(status == Status.Attack) FollowToTarget(target);
-    }
-    public virtual void GoToPos(Vector3 newPos)
-    {
-        if (Vector3.Distance(transform.position, newPos) < 0.0001)
+        if (status == Status.Moving)
         {
-            animator.SetBool("isRun", false);
-            StopMove();
-            return;
+            if (pathToPos == null || currentIndex == pathToPos.Count)
+            {
+                HandleArrived();
+                pathToPos = null;
+                return;
+            }
+            if (Vector3.Distance(transform.position, pathToPos[currentIndex]) < 0.0001)
+            {
+                currentIndex++;
+                if (currentIndex == pathToPos.Count) return;
+            }
+            GoToPos(pathToPos[currentIndex]);
         }
-        transform.position = Vector3.MoveTowards(transform.position, newPos, character.GetSpeedMove() * Time.deltaTime);
-        Flip(newPos);
+        else if (status == Status.Attack)
+        {
+            FollowToTarget(target);
+        }
+    }
+    protected virtual void HandleArrived()
+    {
+        StopMove();
+    }
+    protected virtual void GoToPos(Vector3 pos)
+    {
+        transform.position = Vector3.MoveTowards(transform.position, pos, character.GetSpeedMove() * Time.deltaTime);
+        Flip(pos);
         animator.SetBool("isRun", true);
     }
-    public virtual void FollowToTarget(Transform target)
+    protected virtual void FollowToTarget(Transform target)
     {
         if(target == null) return;
         if (Vector3.Distance(transform.position, target.position) < minDis)
         {
-            animator.SetBool("isRun", false);
             StopMove();
             return;
         }
@@ -59,6 +81,7 @@ public abstract class CharacterMove : MonoBehaviour
     {
         target = null;
         status = Status.Relax;
+        animator.SetBool("isRun", false);
     }
     protected virtual void Flip(Vector3 targetPos)
     {
@@ -71,11 +94,19 @@ public abstract class CharacterMove : MonoBehaviour
             transform.localScale = new Vector3(-1, 1, 1);
         }
     }
+    protected virtual void FindPathToPos(Vector3 pos)
+    {
+        Vector3 goal = new Vector3(pos.x, pos.y);
+        Vector3 start = new Vector3(transform.position.x, transform.position.y);
+        pathToPos = findPathManager.GetPath(start, goal, 1);
+        currentIndex = 0;
+    }
     public virtual void SetNewPos(Vector3 newPos)
     {
         target = null;
         this.newPos = newPos;
         status = Status.Moving;
+        FindPathToPos(newPos);
     }
     public virtual void SetTarget(Transform target)
     {

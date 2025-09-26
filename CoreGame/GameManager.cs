@@ -14,10 +14,11 @@ public class GameManager : MonoBehaviour
     private WarriorRankManager warriorRankManager = new WarriorRankManager();
     public WarriorManager warriorManager;
     public bool isPauseGame { set; get; }
+    public Camera cam;
     private void Start()
     {
         skillManager = GetComponent<SkillManager>();
-        itemManager = GetComponent<ItemManager>(); 
+        itemManager = GetComponent<ItemManager>();
         effectManager = GetComponent<EffectManager>();
     }
     private void Update()

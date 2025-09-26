@@ -7,7 +7,7 @@ public class WarriorManager : MonoBehaviour
     [SerializeField] private List<GameObject> warriorRefapsList =  new List<GameObject>();
     [SerializeField] private List<GameObject> warriorPossessList = new List<GameObject>(); // danh sach tuong da so huu
     [SerializeField] private List<GameObject> warriorList = new List<GameObject>(); //Tuong dang xuat tran
-    private int maxWarriorBattle = 2;
+    private int maxWarriorBattle = 5;
     public int warriorLayer { get; private set; }
     public bool isIgnoreCol { set; get; }
     private void Awake()

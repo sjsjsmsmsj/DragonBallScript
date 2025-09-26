@@ -5,7 +5,6 @@ using UnityEngine;
 
 public class ControllerMove : MonoBehaviour
 {
-    [SerializeField] private Camera cam;
     [SerializeField] private GameManager gameManager;
     [SerializeField] private float lifeTimeClickEffect;
     [SerializeField] private float speedCamera;
@@ -13,20 +12,21 @@ public class ControllerMove : MonoBehaviour
     private WarriorManager warriorManager;
     private LineupManager lineupManager;
     private Vector3 newPos;
-    public bool isMove {get; set;}
-    public static event Action PlayerMove;
-    public FindPathManager findPathManager;
-    private List<Vector3> pathToNewPos;
     private int currentIndex;
     private float timeDelayclick = 0.1f;
     private float timeNextClick;
+    public Camera cam { get; private set; }
+    public bool isMove {get; set;}
+    public static event Action PlayerMove;
+
     private void Start()
     {
         isMove = false;
         warriorManager = GetComponent<WarriorManager>();
         lineupManager = GetComponent<LineupManager>();
         lineupManager.ProtectedFormation(warriorManager.GetWarriorList(), transform.position);
-        findPathManager = new FindPathManager(cellsize, cam, "Building");
+
+        cam = gameManager.cam;
 
     }
     private void Update()
@@ -44,37 +44,11 @@ public class ControllerMove : MonoBehaviour
         PlayerMove?.Invoke();
         isMove = true;
         newPos = cam.ScreenToWorldPoint(Input.mousePosition);
-        Vector3 goal = new Vector3(newPos.x, newPos.y);
-        Vector3 start = new Vector3(transform.position.x, transform.position.y);
-        pathToNewPos = findPathManager.GetPath(start, goal, 1);
-        currentIndex = 0;
-        if (pathToNewPos != null && pathToNewPos.Count > 0)
-        {
-            newPos = pathToNewPos[currentIndex];
-            int lenPath = pathToNewPos.Count;
-        }
-        else
-        {
-            Debug.Log("Find path algorithm is error !");
-        }
-        gameManager.CreateEffectAtPos(EffectManager.CLICK, goal, lifeTimeClickEffect);
+        gameManager.CreateEffectAtPos(EffectManager.CLICK, newPos, lifeTimeClickEffect);
+        lineupManager.FormationMoveToNewPos(warriorManager.GetWarriorList(), newPos);
     }
     private void GoToNewPos()
     {
-        if (pathToNewPos == null|| currentIndex == pathToNewPos.Count)
-        {
-            isMove = false;
-            newPos = new Vector3(transform.position.x, transform.position.y);
-            pathToNewPos = null;
-            return;
-        }
-        if(Vector3.Distance(transform.position, newPos) < 0.0001)
-        {
-            currentIndex++;
-            if (currentIndex == pathToNewPos.Count) return;
-            newPos = pathToNewPos[currentIndex];
-        }
-        lineupManager.FormationMoveToNewPos(warriorManager.GetWarriorList(), newPos);
         transform.position = Vector3.MoveTowards(transform.position, newPos, Time.deltaTime * speedCamera);
     }
     private bool IsMouseOutSideGame()
@@ -91,7 +65,8 @@ public class ControllerMove : MonoBehaviour
 
 public class FindPathManager
 {
-    public int cellSize;
+    public int cell_x;
+    public int cell_y;
     private float heightCam;
     private float widthCam;
     private int gridCols;
@@ -100,14 +75,30 @@ public class FindPathManager
 
     private Camera cam;
     private int layerMask;
-    public FindPathManager(int cellSize, Camera cam, string layerName)
+    public FindPathManager()
     {
-        this.cellSize = cellSize;
+        layerMask = LayerMask.GetMask("Building");
+    }
+    public FindPathManager(int cellSizeX, int cellSizeY, Camera cam, string layerName)
+    {
+        cell_x = cellSizeX;
+        cell_y = cellSizeY;
         this.cam = cam;
         heightCam = cam.orthographicSize * 2f;
         widthCam = heightCam * cam.aspect;
-        gridCols = Mathf.CeilToInt(widthCam / cellSize);
-        gridRows = Mathf.CeilToInt(heightCam / cellSize);
+        gridCols = Mathf.CeilToInt(widthCam / cell_x);
+        gridRows = Mathf.CeilToInt(heightCam / cell_y);
+        layerMask = LayerMask.GetMask(layerName);
+    }
+    public FindPathManager(float cellSizeX, float cellSizeY, Camera cam, string layerName)
+    {
+        cell_x = Mathf.CeilToInt(cellSizeX);
+        cell_y = Mathf.CeilToInt(cellSizeY);
+        this.cam = cam;
+        heightCam = cam.orthographicSize * 2f;
+        widthCam = heightCam * cam.aspect;
+        gridCols = Mathf.CeilToInt(widthCam / cell_x);
+        gridRows = Mathf.CeilToInt(heightCam / cell_y);
         layerMask = LayerMask.GetMask(layerName);
     }
     public List<Vector3> GetPath(Vector3 begin, Vector3 end, int radiusTeam)
@@ -119,7 +110,6 @@ public class FindPathManager
         List<Vector3> path;
         if (hits.Length == 0)
         {
-            Debug.Log("hits == 0");
             path = new List<Vector3>();
             Vector3 goall = new Vector3(end.x, end.y);
             path.Add(begin);
@@ -189,14 +179,14 @@ public class FindPathManager
     }
     public Vector2Int Pos2GridIndex(Vector2 pos)
     {
-        int x = Mathf.FloorToInt((pos.x - topLeft.x) / cellSize);
-        int y = Mathf.FloorToInt((topLeft.y - pos.y) / cellSize);
+        int x = Mathf.FloorToInt((pos.x - topLeft.x) / cell_x);
+        int y = Mathf.FloorToInt((topLeft.y - pos.y) / cell_y);
         return new Vector2Int(x, y);
     }
     public Vector3 GridIndex2Pos(Vector2Int index)
     {
-        float x = index.x * cellSize + topLeft.x + cellSize / 2f;
-        float y = topLeft.y - index.y * cellSize - cellSize / 2f;
+        float x = index.x * cell_x + topLeft.x + cell_x / 2f;
+        float y = topLeft.y - index.y * cell_y - cell_y / 2f;
         return new Vector3(x, y, 0);
     }
     public List<Vector3> FindPath(int[,] grid, Vector2Int start, Vector2Int goal)
@@ -260,7 +250,7 @@ public class FindPathManager
                 }
             }
         }
-
+        Debug.Log("Not exist path to goal");
         return new List<Vector3>();
     }
 

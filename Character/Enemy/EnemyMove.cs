@@ -17,7 +17,10 @@ public class EnemyMove : CharacterMove
     protected override void Update()
     {
         base.Update();
-        if (status == Status.BackHome) GoToPos(initPos);
+        if (status == Status.BackHome)
+        {
+            GoToPos(initPos);
+        }
         PatrolState();
         BackHomeState();
     }

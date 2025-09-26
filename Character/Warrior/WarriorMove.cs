@@ -14,9 +14,19 @@ public class WarriorMove : CharacterMove
     protected override void Update()
     {
         base.Update();
-        if (status == Status.BackHome) GoToPos(newPos);
+        if (status == Status.BackHome)
+        {
+            if (Vector3.Distance(transform.position, newPos) < 0.0001)
+            {
+                StopMove();
+            }
+            GoToPos(newPos);
+        }
         BackHomeState();
-        if(status == Status.Moving && !gameManager.warriorManager.isIgnoreCol) StopMove();
+        if (status == Status.Moving && !gameManager.warriorManager.isIgnoreCol)
+        {
+            HandleArrived();
+        }
     }
     private void BackHomeState()
     {
@@ -29,18 +39,14 @@ public class WarriorMove : CharacterMove
             status = Status.BackHome;
         }
     }
-    public override void GoToPos(Vector3 newPos)
+    protected override void HandleArrived()
     {
-        if (Vector3.Distance(transform.position, newPos) < 0.0001)
-        {
-            animator.SetBool("isRun", false);
-            Arrived?.Invoke(character.GetID());
-            StopMove();
-            return;
-        }
-        transform.position = Vector3.MoveTowards(transform.position, newPos, character.GetSpeedMove() * Time.deltaTime);
-        Flip(newPos);
-        animator.SetBool("isRun", true);
+        Arrived?.Invoke(character.GetID());
+        StopMove();
+    }
+    protected override void GoToPos(Vector3 pos)
+    {
+        base.GoToPos(pos);
         if (Vector3.Distance(transform.position, newPos) > maxLimitDisToNewPos)
         {
             transform.position = newPos;
